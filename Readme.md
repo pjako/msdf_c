@@ -31,4 +31,4 @@ void main()
 
 Current issues:
 
-* ~~Rendering is not quite what you get from msdfgen~~ [X]
+* Rendering is not quite what you get from msdfgen
