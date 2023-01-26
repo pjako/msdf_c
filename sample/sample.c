@@ -80,7 +80,7 @@ int main() {
 
     msdf_AllocCtx allocCtx = {g_alloc, g_free, NULL};
 
-    int borderSize = 2;
+    int borderSize = 1;
 
     msdf_Result result;
     int success = msdf_genGlyph(&result, &stbttInfo, glyphIdx, borderSize, genScale, 2.0f / genSize, &allocCtx);
@@ -93,23 +93,55 @@ int main() {
     FILE* fp = fopen(SAMPLE_ROOT "a.png", "wb");
 
     uint8_t* pixels = malloc(sizeof(uint8_t) * result.width * result.height * 3);
-
+    float scale = genSize;
+    float maxValue = 1.0 * (scale);
+    float transistionWidth = ((((((float) genSize) * 0.3f) + scale) / (scale * 2.0f)));
+    //float ff = expf(0.01);
     for (int y = 0; y < result.height; y++) {
         int yPos = result.width * 3 * y;
         uint8_t* pixelRow = pixels + (y * result.width * 3);
         for (int x = 0; x < result.width; x++) {
             int indexSdf = yPos + (x * 3);
-            float scale = genSize;
             float r = result.rgb[indexSdf + 0];
             float g = result.rgb[indexSdf + 1];
             float b = result.rgb[indexSdf + 2];
+
+
             r = ((((r) + scale) / (scale * 2.0f)));
             g = ((((g) + scale) / (scale * 2.0f)));
             b = ((((b) + scale) / (scale * 2.0f)));
 
-            pixelRow[x * 3 + 0] = r * 255.0f;
-            pixelRow[x * 3 + 1] = g * 255.0f;
-            pixelRow[x * 3 + 2] = b * 255.0f;
+            if (r > 0.5f) {
+                if (r > (transistionWidth)) {
+                    r = 1.0f;
+                } else {
+                    r = 0.0f + (r - 0.5f) * (transistionWidth) * 10.0f;
+                }
+            } else {
+                r = 0.0f;
+            }
+            if (g > 0.5f) {
+                if (g > (transistionWidth)) {
+                    g = 1.0f;
+                } else {
+                    g = 0.0f + (g - 0.5f) * (transistionWidth) * 10.0f;
+                }
+            } else {
+                g = 0.0f;
+            }
+            if (b > 0.5f) {
+                if (b > (transistionWidth)) {
+                    b = 1.0f;
+                } else {
+                    b = 0.0f + (b - 0.5f) * (transistionWidth) * 10.0f;
+                }
+            } else {
+                b = 0.0f;
+            }
+
+            pixelRow[x * 3 + 0] = r * 255.0f; // (r > 0.5f) ? 255.0f : r * 255.0f;
+            pixelRow[x * 3 + 1] = g * 255.0f; // (g > 0.5f) ? 255.0f : g * 255.0f;
+            pixelRow[x * 3 + 2] = b * 255.0f; // (b > 0.5f) ? 255.0f : b * 255.0f;
         }
     }
     
