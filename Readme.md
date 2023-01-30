@@ -5,8 +5,6 @@ Single Header STB-style library
 
 ---
 
-**Rendering output is not quite what you would get from sdfgen but it should work**
-
 [This library is my take on improving msdf-c with some fixes and improving its API](https://github.com/solenum/msdf-c)
 
 [Based on the C++ implementation by Viktor Chlumský.](https://github.com/Chlumsky/msdfgen)
@@ -27,8 +25,3 @@ void main()
   color = vec4(vec3(1.0), o);
 }
 ~~~
-
-
-Current issues:
-
-* Rendering is not quite what you get from msdfgen
