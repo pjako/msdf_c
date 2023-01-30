@@ -54,6 +54,26 @@ static void g_free(void* ptr, void* ctx) {
     return free(ptr);
 }
 
+float g_min(float a, float b) {
+    return a > b ? b : a;
+}
+
+float g_max(float a, float b) {
+    return a > b ? a : b;
+}
+
+float g_clamp(float val, float min, float max) {
+    return g_min(g_max(val, min), max);
+}
+
+float g_median(float r, float g, float b) {
+    return g_max(g_min(r, g), g_min(g_max(r, g), b));
+}
+
+float g_map(float min, float max, float v) {
+    return (v - min) / (max - min);
+}
+
 int main() {
     stbtt_fontinfo stbttInfo;
 
@@ -76,11 +96,13 @@ int main() {
     int genSize = 128;
     float genScale = stbtt_ScaleForPixelHeight(&stbttInfo, genSize);
 
-    int glyphIdx = stbtt_FindGlyphIndex(&stbttInfo, 'A');
+    int glyph = 'Y';
+
+    int glyphIdx = stbtt_FindGlyphIndex(&stbttInfo, glyph);
 
     msdf_AllocCtx allocCtx = {g_alloc, g_free, NULL};
 
-    int borderSize = 1;
+    int borderSize = 4;
 
     msdf_Result result;
     int success = msdf_genGlyph(&result, &stbttInfo, glyphIdx, borderSize, genScale, 2.0f / genSize, &allocCtx);
@@ -90,12 +112,16 @@ int main() {
         return 1;
     }
 
-    FILE* fp = fopen(SAMPLE_ROOT "a.png", "wb");
+    FILE* fp = fopen(SAMPLE_ROOT "/sdf.png", "wb");
 
     uint8_t* pixels = malloc(sizeof(uint8_t) * result.width * result.height * 3);
     float scale = genSize;
     float maxValue = 1.0 * (scale);
-    float transistionWidth = ((((((float) genSize) * 0.3f) + scale) / (scale * 2.0f)));
+    float transistionWidth = ((((((float) genSize) * 0.7f) + scale) / (scale * 2.0f)));
+    float transistionAbs = (transistionWidth - 0.5);
+    float transistStart = 0.5 - transistionAbs / 2;
+    float transistEnd = transistStart + transistionAbs;
+   
     //float ff = expf(0.01);
     for (int y = 0; y < result.height; y++) {
         int yPos = result.width * 3 * y;
@@ -111,29 +137,29 @@ int main() {
             g = ((((g) + scale) / (scale * 2.0f)));
             b = ((((b) + scale) / (scale * 2.0f)));
 
-            if (r > 0.5f) {
-                if (r > (transistionWidth)) {
+            if (r > transistStart) {
+                if (r > (transistEnd)) {
                     r = 1.0f;
                 } else {
-                    r = 0.0f + (r - 0.5f) * (transistionWidth) * 10.0f;
+                    r = 0.0f + (r - transistStart) / (transistionAbs);
                 }
             } else {
                 r = 0.0f;
             }
-            if (g > 0.5f) {
-                if (g > (transistionWidth)) {
+            if (g > transistStart) {
+                if (g > (transistEnd)) {
                     g = 1.0f;
                 } else {
-                    g = 0.0f + (g - 0.5f) * (transistionWidth) * 10.0f;
+                    g = 0.0f + (g - transistStart) / (transistionAbs);
                 }
             } else {
                 g = 0.0f;
             }
-            if (b > 0.5f) {
-                if (b > (transistionWidth)) {
+            if (b > transistStart) {
+                if (b > (transistEnd)) {
                     b = 1.0f;
                 } else {
-                    b = 0.0f + (b - 0.5f) * (transistionWidth) * 10.0f;
+                    b = 0.0f + (b - transistStart) / (transistionAbs);
                 }
             } else {
                 b = 0.0f;
@@ -144,8 +170,32 @@ int main() {
             pixelRow[x * 3 + 2] = b * 255.0f; // (b > 0.5f) ? 255.0f : b * 255.0f;
         }
     }
-    
     svpng(fp, result.width, result.height, pixels, 0);
     fclose(fp);
+
+    // apply sdf
+
+    FILE* finalImage = fopen(SAMPLE_ROOT "/final.png", "wb");
+
+    uint8_t* rgbaFinal = malloc(sizeof(uint8_t) * result.width * result.height * 4);
+
+    for (int y = 0; y < result.height; y++) {
+        uint8_t* pixelRow = pixels + (y * result.width * 3);
+        uint8_t* rgbaFinalRow = rgbaFinal + (y * result.width * 4);
+        for (int x = 0; x < result.width; x++) {
+            float r = ((float)pixelRow[x * 3 + 0]) / 255.0f;// = r * 255.0f; // (r > 0.5f) ? 255.0f : r * 255.0f;
+            float g = ((float)pixelRow[x * 3 + 1]) / 255.0f;// = g * 255.0f; // (g > 0.5f) ? 255.0f : g * 255.0f;
+            float b = ((float)pixelRow[x * 3 + 2]) / 255.0f;// = b * 255.0f; // (b > 0.5f) ? 255.0f : b * 255.0f;
+            float dist = g_median(r, g, b);
+            float opacity = g_clamp(dist - 0.5f, 0, 1) * 2.0f;
+            rgbaFinalRow[x * 4 + 0] = 0;//255.0f;
+            rgbaFinalRow[x * 4 + 1] = 0;//255.0f;
+            rgbaFinalRow[x * 4 + 2] = 0;//255.0f;
+            rgbaFinalRow[x * 4 + 3] = opacity * 255.0f;
+
+        }
+    }
+    svpng(finalImage, result.width, result.height, rgbaFinal, 1);
+    fclose(finalImage);
     return 0;
 }
