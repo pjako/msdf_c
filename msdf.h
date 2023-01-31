@@ -6,10 +6,6 @@
   This is in an unstable state, ymmv.
   Based on the C++ implementation by Viktor Chlumský.
   https://github.com/Chlumsky/msdfgen
-  Current issues:
-   *Glyph alignment seems off
-   *Lack of multi-byte character support
-   *Error correction appears to be wrong (pixel clash)
 */
 
 #ifndef MSDF_H
